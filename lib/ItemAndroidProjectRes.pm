@@ -34,6 +34,8 @@ use XML::Parser::Expat;
 use AndroidStringResourceSaxHandler;
 use ItemFileRes;
 use ItemAndroidFileRes;
+use Locale::Language;
+use Locale::Country;
 
 
 #
@@ -91,6 +93,13 @@ sub _loadLangs
         {
             last;
         }
+
+        
+        my @allLangCodes = all_language_codes();
+        my @allCountryCodes = all_country_codes( LOCALE_CODE_ALPHA_2 );
+        
+        my $langSuffixRegex = "(?:".join( "|", @allLangCodes ).")(?:r(?:".join( "|", @allCountryCodes )."))?";
+
         
         my @subDirs;
 
@@ -102,7 +111,7 @@ sub _loadLangs
             last;
         }
 
-        @subDirs = grep( /^values-.+$/i ,readdir( $resDirH ) );
+        @subDirs = grep( /^values-${langSuffixRegex}$/i ,readdir( $resDirH ) );
 
         closedir( $resDirH );
 
