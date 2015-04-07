@@ -1,0 +1,5 @@
+*.csv
+*.xml
+*.strings
+thelper.packed.pl
+fatlib
