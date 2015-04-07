@@ -14,24 +14,24 @@ The tool now uses CSV to export and import texts.
 ## How to export not-translated texts for a partuclar language
 `thelper.pl n --android <path_to_android_app_project> --lang es --out-csv <path_to_csv>`
 
-  *path_to_android_app_project is path at which android app project resides
-  *"es" langauge is just an example, of course.
-  *path_to_csv is path to write exported CSV to
+  * path_to_android_app_project is path at which android app project resides
+  * "es" langauge is just an example, of course.
+  * path_to_csv is path to write exported CSV to
 
 ## How to import new translations for a particular langauge
 `thelper.pl a --android <path_to_android_app_project> --lang es --in-csv <path_to_csv> --out-xml <path_to_xml>`
 
-..* path_to_android_app_project is path at which android app project resides
-..*"es" langauge is just an example, again.
-..*path_to_csv is path to CSV file to read importing texts from
-..*path_to_xml is path to write new string resource XML file to
+  * path_to_android_app_project is path at which android app project resides
+  * "es" langauge is just an example, again.
+  * path_to_csv is path to CSV file to read importing texts from
+  * path_to_xml is path to write new string resource XML file to
 
 ## The tool is very simple and straght forward
 Indeed, it is.
 The tool doesn't cover whole variety of Android project string resources.
 Instead it assumes the following:
-..*texts are kept in strings.xml files, i.e. tool to look at the following files only
-..*value folder language modificator is the only modificator, e.g. values-es-sw600dp is not the case
+  * texts are kept in strings.xml files, i.e. tool to look at the following files only
+  * value folder language modificator is the only modificator, e.g. values-es-sw600dp is not the case
 
 Freaky string resource case could be convered by using aliases.
 Texts marked as non-translatable is skipped.
