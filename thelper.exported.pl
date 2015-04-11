@@ -518,6 +518,257 @@ $fatpacked{"CommonUtils.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'COM
   1;
 COMMONUTILS
 
+$fatpacked{"IosStringResourceSaxHandler.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'IOSSTRINGRESOURCESAXHANDLER';
+  #
+  # The MIT License (MIT)
+  #
+  # Copyright (c) 2015 yaalaa
+  #
+  # Permission is hereby granted, free of charge, to any person obtaining a copy
+  # of this software and associated documentation files (the "Software"), to deal
+  # in the Software without restriction, including without limitation the rights
+  # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  # copies of the Software, and to permit persons to whom the Software is
+  # furnished to do so, subject to the following conditions:
+  #
+  # The above copyright notice and this permission notice shall be included in all
+  # copies or substantial portions of the Software.
+  #
+  # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  # SOFTWARE.
+  #
+  #
+  # SAX handler for iOS String resource 
+  #
+  package IosStringResourceSaxHandler;
+  
+  use strict;
+  use CommonUtils;
+  use ItemTextRes;
+  use ItemText;
+  use Data::Dumper;
+  use ItemCommentRes;
+  
+  
+  sub new
+  {
+      my $class = shift;
+  
+      my $self = bless 
+      {
+          res => undef,
+          acc => "",
+          q => "",
+          key => "",
+          item => undef,
+      }, $class;
+  
+      return $self;
+  }
+  
+  #
+  # Binds handlers to parser
+  #
+  # @param parser - parser
+  #
+  sub setHandlers
+  {
+      my ( $self, $parser ) = @_;
+      
+      $parser->setHandlers( 
+          'Start' => sub{ $self->_start_element( @_ ) },
+          'End'   => sub{ $self->_end_element( @_ ) },
+          'Char'  => sub{ $self->_characters( @_ ) },
+          );
+  }
+  
+  #
+  # Set resource file
+  #
+  # @param res - resource file as ItemFileRes
+  #
+  sub setRes
+  {
+      my ( $self, $res ) = @_;
+      
+      $self->{res} = $res;
+  }
+  
+  sub _start_element 
+  {
+      my ( $self, $p, $el, @attrs ) = @_;
+      
+      #printf "IosStringResourceSaxHandler::_start_element: [%s] deep=%d\n", $el, $p->depth();
+      
+      my $resetKey = 0;
+      
+      if ( $el eq "plist" ) # plist
+      {
+          # do nothing
+      }
+      elsif ( $el eq "key" ) # key
+      {
+          $self->{key} = "";
+      }
+      elsif ( $el eq "string" ) # string
+      {
+          # do nothing
+      } 
+      elsif ( $el eq "dict" ) # dict
+      {
+          my $deep = $p->depth();
+          
+          if ( $deep == 2 ) 
+          {
+              my $item = ItemTextRes->new( $self->{key}, {
+                  plural => 1,
+              } );
+              
+              $self->{item} = $item;
+              
+              $resetKey = 1;
+          }
+      } 
+      else # unsupported tag
+      {
+          printf "IosStringResourceSaxHandler::_start_element: unsupported [%s] at %s\n", $el, $self->_getContext( $p );
+      }
+      
+      $self->{acc} = "";
+      
+      if ( $resetKey ) 
+      {
+          $self->{key} = "";
+      }
+  }
+  
+  sub _end_element 
+  {
+      my ( $self, $p, $el ) = @_;
+      
+      #printf "IosStringResourceSaxHandler::_end_element: [%s] deep=%d\n", $el, $p->depth();
+      
+      my $resetKey = 1;
+      my $resetQ = 1;
+      my $resetItem = 0;
+      
+      my $item = $self->{item};
+      my $key = $self->{key};
+      
+      if ( $el eq "plist" ) # plist
+      {
+          # do nothings
+      }
+      elsif ( $el eq "key" ) # key
+      {
+          $self->{key} = $self->{acc};
+          $resetKey = 0;
+      }
+      elsif ( $el eq "string" ) # string
+      {
+          if ( defined( $item ) )
+          {
+              my $s = $self->{acc};
+              
+              my $deep = $p->depth();
+              
+              if ( $deep == 3 ) 
+              {
+                  if ( $key eq "NSStringLocalizedFormatKey" )
+                  {
+                      if ( $s =~ /%#\@([^\@]+)\@/ )
+                      {
+                          $item->{iosvar} = $1;
+                      }
+                  }
+              }
+              elsif ( $deep == 4 )
+              {
+                  if ( $key eq "NSStringFormatSpecTypeKey" )
+                  {
+                      # do nothing
+                  }
+                  elsif ( $key eq "NSStringFormatValueTypeKey" )
+                  {
+                      $item->{iosvarspec} = $s;
+                  }
+                  else
+                  {
+                      my $text = ItemText->new( $s );
+                      
+                      $item->setVariant( $key, $text );
+                  }
+              }
+          }
+      } 
+      elsif ( $el eq "dict" ) # dict
+      {
+          my $deep = $p->depth();
+          
+          if ( $deep == 2 ) # item completed
+          {
+              $resetItem = 1;
+              
+              if ( defined( $item ) && !$item->isEmpty() ) 
+              {
+                  $self->{res}->addItem( $item );
+              }
+          }
+          elsif ( $deep == 3 ) # item's variable completed
+          {
+              # do nothing
+          }
+      }
+      
+      $self->{acc} = "";
+      
+      if ( $resetKey ) 
+      {
+          $self->{key} = "";
+      }
+      
+      if ( $resetQ ) 
+      {
+          $self->{q} = "";
+      }
+      
+      if ( $resetItem )
+      {
+          delete $self->{item};
+      }
+  }
+  
+  sub _characters
+  {
+      my ( $self, $p, $data ) = @_;
+      
+      #printf "IosStringResourceSaxHandler::_characters: [%s]\n", $data;
+      
+      $self->{acc} .= $data;
+  }
+  
+  #
+  # Retrieves context string
+  #
+  # @param parser - parser
+  #
+  # @return context string
+  #
+  sub _getContext
+  {
+      my ( $self, $p ) = @_;
+      
+      return $self->{res}->getFileName()." line ".$p->current_line();
+  }
+  
+  1;
+IOSSTRINGRESOURCESAXHANDLER
+
 $fatpacked{"ItemAndroidFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ITEMANDROIDFILERES';
   #
   # The MIT License (MIT)
@@ -579,6 +830,7 @@ $fatpacked{"ItemAndroidFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n"
   # Saves to XML file
   #
   # @param fileName - filename to write to
+  # @param options  - options { NOTTRANSLATABLE, ALIAS }
   #
   # @return !=0, if succeeded
   #
@@ -1602,6 +1854,9 @@ $fatpacked{"ItemIosFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   use Scalar::Util qw(reftype blessed);
   use ItemText;
   use ItemCommentRes;
+  use IosStringResourceSaxHandler;
+  use XML::Writer;
+  use IO::File;
   
   
   #
@@ -1743,6 +1998,54 @@ $fatpacked{"ItemIosFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   }
   
   #
+  # Loads plural items from the file
+  #
+  # @param fileName - filename
+  #
+  # @return !=0, if succeeded
+  #
+  sub loadPlurals
+  {
+      my ( $self, $fileName ) = @_;
+      
+      my $out = 0;
+      
+      {{
+          if ( !defined( $fileName ) || $fileName eq "" ) # no filename
+          {
+              printf "ItemIosFileRes::loadPlurals: no filename specified\n";
+              last;
+          }
+          
+          if ( ! -f $fileName ) # not found
+          {
+              printf "ItemIosFileRes::loadPlurals: file is not found[%s]\n", $fileName;
+              last;
+          }
+          
+          my $resData = CommonUtils::getFileContent( $fileName );
+          
+          if ( length( $resData ) <= 0 ) # no data
+          {
+              last;
+          }
+          
+          my $handler = IosStringResourceSaxHandler->new;
+          
+          my $parser = XML::Parser::Expat->new;
+          
+          $handler->setRes( $self );
+          $handler->setHandlers( $parser );
+          
+          $parser->parsestring( $resData );
+          
+          $out = 1;
+      }}
+      
+      return $out;
+  }
+  
+  #
   # Saves to file
   #
   # @param fileName - filename to write to
@@ -1853,6 +2156,142 @@ $fatpacked{"ItemIosFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
       return $out;
   }
   
+  #
+  # Saves plural items to file
+  #
+  # @param fileName - filename to write to
+  #
+  # @return !=0, if succeeded
+  #
+  sub savePlural
+  {
+      my ( $self, $fileName ) = @_;
+      
+      my $out = 0;
+      
+      my $file;
+      
+      {{
+          if ( $fileName eq "" ) # no filename
+          {
+              printf "ItemIosFileRes::savePlural: no filename specified\n";
+              last;
+          }
+          
+          if ( !open( $file, ">:raw:encoding(UTF-8)", $fileName ) ) # failed
+          {
+              printf "ItemIosFileRes::savePlural: open failed[%s]: %s\n", $fileName, $!;
+              last;
+          }
+          
+          my $writer = XML::Writer->new( 
+              OUTPUT => $file,
+              ENCODING => "utf-8",
+              CHECK_PRINT => 1,
+              );
+          
+          my $indent = "\t";
+          my $newline = "\n";
+          
+          $writer->xmlDecl( "UTF-8");
+          $writer->doctype( "plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd" );
+          $writer->startTag( "plist", version => "1.0" );
+          $writer->characters( $newline );
+          $writer->startTag( "dict" );
+          #$writer->characters( $newline );
+          
+          for my $curItem ( @{ $self->{itemsExt} } )
+          {
+              if ( $curItem->isa( "ItemTextRes" ) ) # text resource
+              {
+                  if ( $curItem->isPlural() ) # plural text
+                  {
+                      $writer->characters( $newline.$indent );
+                      $writer->startTag( "key" );
+                      $writer->characters( $curItem->getId() );
+                      $writer->endTag( "key" );
+                      $writer->characters( $newline.$indent );
+                      $writer->startTag( "dict" );
+                      
+                      $writer->characters( $newline.$indent.$indent );
+                      $writer->startTag( "key" );
+                      $writer->characters( "NSStringLocalizedFormatKey" );
+                      $writer->endTag( "key" );
+                      $writer->characters( $newline.$indent.$indent );
+                      $writer->startTag( "string" );
+                      $writer->characters( "%#@".$curItem->{iosvar}."@" );
+                      $writer->endTag( "string" );
+                      
+                      $writer->characters( $newline.$indent.$indent );
+                      $writer->startTag( "key" );
+                      $writer->characters( $curItem->{iosvar} );
+                      $writer->endTag( "key" );
+                      
+                      $writer->characters( $newline.$indent.$indent );
+                      $writer->startTag( "dict" );
+                      
+                      $writer->characters( $newline.$indent.$indent.$indent );
+                      $writer->startTag( "key" );
+                      $writer->characters( "NSStringFormatSpecTypeKey" );
+                      $writer->endTag( "key" );
+                      $writer->characters( $newline.$indent.$indent.$indent );
+                      $writer->startTag( "string" );
+                      $writer->characters( "NSStringPluralRuleType" );
+                      $writer->endTag( "string" );
+                      
+                      $writer->characters( $newline.$indent.$indent.$indent );
+                      $writer->startTag( "key" );
+                      $writer->characters( "NSStringFormatValueTypeKey" );
+                      $writer->endTag( "key" );
+                      $writer->characters( $newline.$indent.$indent.$indent );
+                      $writer->startTag( "string" );
+                      $writer->characters( $curItem->{iosvarspec} );
+                      $writer->endTag( "string" );
+                      
+                      for my $curVariant ( @$ItemTextRes::VARIANTS ) 
+                      {
+                          my $text = $curItem->getVariant( $curVariant );
+                          
+                          if ( defined( $text ) )
+                          {
+                              $writer->characters( $newline.$indent.$indent.$indent );
+                              $writer->startTag( "key" );
+                              $writer->characters( $curVariant );
+                              $writer->endTag( "key" );
+                              $writer->characters( $newline.$indent.$indent.$indent );
+                              $writer->startTag( "string" );
+                              $writer->characters( $text->getData() );
+                              $writer->endTag( "string" );
+                          }
+                      }
+                      
+                      $writer->characters( $newline.$indent.$indent );
+                      $writer->endTag( "dict" );
+                      
+                      $writer->characters( $newline.$indent );
+                      $writer->endTag( "dict" );
+                      
+                  }
+              }
+          }
+          
+          $writer->characters( $newline );
+          $writer->endTag( "dict" );
+          $writer->characters( $newline );
+          $writer->endTag( "plist" );
+          $writer->end();
+          
+          $out = 1;
+      }}
+      
+      if ( defined( $file ) )
+      {
+          close( $file );
+      }
+      
+      return $out;
+  }
+  
   
   1;
 ITEMIOSFILERES
@@ -1901,6 +2340,10 @@ $fatpacked{"ItemIosProjectRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
   # Resource sub-folder suffix
   #
   my $RES_DIR_SUFFIX = ".lproj";
+  #
+  # Plain items for resource file suffix
+  #
+  our $RES_PLURAL_SUFFIX = "dict";
   #
   # Resource filename
   #
@@ -2038,6 +2481,8 @@ $fatpacked{"ItemIosProjectRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
               last;
           }
           
+          $res->loadPlurals( $resFileName.$RES_PLURAL_SUFFIX );
+          
           $out = $res;
       }}
       
@@ -2068,6 +2513,28 @@ $fatpacked{"ItemIosProjectRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".
       my ( $self, $lang ) = @_;
       
       return $self->_loadRes( $lang.$RES_DIR_SUFFIX."/".$RES_FILE_NAME, $lang );
+  }
+  
+  #
+  # Retrieves item merged from the base and translated
+  #
+  # @param base       - base item
+  # @param translated - translated item
+  #
+  # @return merged item
+  sub _mergeItem
+  {
+      my ( $self, $base, $translated ) = @_;
+      
+      my $out = $self->SUPER::_mergeItem( $base, $translated );
+      
+      if ( defined( $out ) && defined( $base ) )
+      {
+          $out->{iosvar} = $base->{iosvar};
+          $out->{iosvarspec} = $base->{iosvarspec};
+      }
+      
+      return $out;
   }
   
   
@@ -2465,6 +2932,27 @@ $fatpacked{"ItemProjectRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   }
   
   #
+  # Retrieves item merged from the base and translated
+  #
+  # @param base       - base item
+  # @param translated - translated item
+  #
+  # @return merged item
+  sub _mergeItem
+  {
+      my ( $self, $base, $translated ) = @_;
+      
+      my $out;
+      
+      if ( defined( $translated ) )
+      {
+          $out = $translated->clone();
+      }
+      
+      return $out;
+  }
+  
+  #
   # Merges existing and new translations
   #
   # @param lang - language
@@ -2793,6 +3281,18 @@ $fatpacked{"ItemText.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ITEMTE
   }
   
   #
+  # Retrieves copy of this object
+  #
+  # @return copy of this object
+  #
+  sub clone
+  {
+      my $self = shift;
+      
+      return ItemText->new( $self->getData() );
+  }
+  
+  #
   # Retrieves text string
   # 
   # @return text string
@@ -2936,6 +3436,44 @@ $fatpacked{"ItemTextRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'ITE
       }, $class;
       
       return $self;
+  }
+  
+  #
+  # Retrieves copy of this object
+  #
+  # @return copy of this object
+  #
+  sub clone
+  {
+      my $self = shift;
+      
+      my $out = ItemTextRes->new( $self->getId(), {
+          plural => $self->isPlural(),
+          } );
+      
+      if ( !$self->isEmpty() )
+      {
+          if ( !$self->isPlural() ) # plain
+          {
+              $out->setText( $self->getText()->clone() );
+          }
+          else # plural
+          {
+              for my $curVariant ( @{ $VARIANTS } )
+              {
+                  my $field = $_VARIANT_FIELDS->{$curVariant};
+                  
+                  my $var = $self->getVariant( $curVariant );
+                  
+                  if ( defined( $var ) )
+                  {
+                      $out->setVariant( $curVariant, $var->clone() );
+                  }
+              }
+          }
+      }
+      
+      return $out;
   }
   
   #
@@ -3465,6 +4003,12 @@ elsif ( $cmdApplyNewTranslations ) # to apply new translations
         if ( !$merge->save( $optOutStrings ) ) # failed
         {
             #printf "save failed\n";
+            exit( 0 );
+        }
+        
+        if ( !$merge->savePlural( $optOutStrings.$ItemIosProjectRes::RES_PLURAL_SUFFIX ) ) # failed
+        {
+            #printf "savePlural failed\n";
             exit( 0 );
         }
     }

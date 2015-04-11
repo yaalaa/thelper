@@ -261,6 +261,12 @@ elsif ( $cmdApplyNewTranslations ) # to apply new translations
             #printf "save failed\n";
             exit( 0 );
         }
+        
+        if ( !$merge->savePlural( $optOutStrings.$ItemIosProjectRes::RES_PLURAL_SUFFIX ) ) # failed
+        {
+            #printf "savePlural failed\n";
+            exit( 0 );
+        }
     }
     else
     {

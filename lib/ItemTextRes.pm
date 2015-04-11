@@ -129,6 +129,44 @@ sub new
 }
 
 #
+# Retrieves copy of this object
+#
+# @return copy of this object
+#
+sub clone
+{
+    my $self = shift;
+    
+    my $out = ItemTextRes->new( $self->getId(), {
+        plural => $self->isPlural(),
+        } );
+    
+    if ( !$self->isEmpty() )
+    {
+        if ( !$self->isPlural() ) # plain
+        {
+            $out->setText( $self->getText()->clone() );
+        }
+        else # plural
+        {
+            for my $curVariant ( @{ $VARIANTS } )
+            {
+                my $field = $_VARIANT_FIELDS->{$curVariant};
+                
+                my $var = $self->getVariant( $curVariant );
+                
+                if ( defined( $var ) )
+                {
+                    $out->setVariant( $curVariant, $var->clone() );
+                }
+            }
+        }
+    }
+    
+    return $out;
+}
+
+#
 # Retrieves ID
 #
 # @return ID

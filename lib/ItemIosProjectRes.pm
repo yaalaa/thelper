@@ -42,6 +42,10 @@ our $SOURCE = "ios";
 #
 my $RES_DIR_SUFFIX = ".lproj";
 #
+# Plain items for resource file suffix
+#
+our $RES_PLURAL_SUFFIX = "dict";
+#
 # Resource filename
 #
 my $RES_FILE_NAME = "Localizable.strings";
@@ -178,6 +182,8 @@ sub _loadRes
             last;
         }
         
+        $res->loadPlurals( $resFileName.$RES_PLURAL_SUFFIX );
+        
         $out = $res;
     }}
     
@@ -208,6 +214,28 @@ sub _loadResForLang
     my ( $self, $lang ) = @_;
     
     return $self->_loadRes( $lang.$RES_DIR_SUFFIX."/".$RES_FILE_NAME, $lang );
+}
+
+#
+# Retrieves item merged from the base and translated
+#
+# @param base       - base item
+# @param translated - translated item
+#
+# @return merged item
+sub _mergeItem
+{
+    my ( $self, $base, $translated ) = @_;
+    
+    my $out = $self->SUPER::_mergeItem( $base, $translated );
+    
+    if ( defined( $out ) && defined( $base ) )
+    {
+        $out->{iosvar} = $base->{iosvar};
+        $out->{iosvarspec} = $base->{iosvarspec};
+    }
+    
+    return $out;
 }
 
 

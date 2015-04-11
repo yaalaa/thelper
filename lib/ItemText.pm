@@ -50,6 +50,18 @@ sub new
 }
 
 #
+# Retrieves copy of this object
+#
+# @return copy of this object
+#
+sub clone
+{
+    my $self = shift;
+    
+    return ItemText->new( $self->getData() );
+}
+
+#
 # Retrieves text string
 # 
 # @return text string

@@ -1,5 +1,6 @@
-*.csv
-*.xml
-*.strings
-thelper.packed.pl
-fatlib
+/*.csv
+/*.xml
+/*.strings
+/*.stringsdict
+/thelper.packed.pl
+/fatlib

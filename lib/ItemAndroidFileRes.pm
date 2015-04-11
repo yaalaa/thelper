@@ -58,6 +58,7 @@ sub new
 # Saves to XML file
 #
 # @param fileName - filename to write to
+# @param options  - options { NOTTRANSLATABLE, ALIAS }
 #
 # @return !=0, if succeeded
 #

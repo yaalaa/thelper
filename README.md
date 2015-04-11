@@ -42,7 +42,7 @@ Yup, Android app project was just an example too.
 The tool could work with iOS app project.
 Just use `--ios` option instead of `--android` one.
 
-For iOS app project the tool works with `<lang>.lproj/Localizable.strings` (`Localizable.stringsdict` will come I hope).
+For iOS app project the tool works with `<lang>.lproj/Localizable.strings` and `<lang>.lproj/Localizable.stringsdict`.
 `en.lproj` is treated as the default translation.
 
 ### Distribution

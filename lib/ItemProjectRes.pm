@@ -387,6 +387,27 @@ sub saveNotTraslatedToCsv
 }
 
 #
+# Retrieves item merged from the base and translated
+#
+# @param base       - base item
+# @param translated - translated item
+#
+# @return merged item
+sub _mergeItem
+{
+    my ( $self, $base, $translated ) = @_;
+    
+    my $out;
+    
+    if ( defined( $translated ) )
+    {
+        $out = $translated->clone();
+    }
+    
+    return $out;
+}
+
+#
 # Merges existing and new translations
 #
 # @param lang - language

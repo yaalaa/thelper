@@ -33,6 +33,9 @@ use CommonUtils;
 use Scalar::Util qw(reftype blessed);
 use ItemText;
 use ItemCommentRes;
+use IosStringResourceSaxHandler;
+use XML::Writer;
+use IO::File;
 
 
 #
@@ -174,6 +177,54 @@ sub load
 }
 
 #
+# Loads plural items from the file
+#
+# @param fileName - filename
+#
+# @return !=0, if succeeded
+#
+sub loadPlurals
+{
+    my ( $self, $fileName ) = @_;
+    
+    my $out = 0;
+    
+    {{
+        if ( !defined( $fileName ) || $fileName eq "" ) # no filename
+        {
+            printf "ItemIosFileRes::loadPlurals: no filename specified\n";
+            last;
+        }
+        
+        if ( ! -f $fileName ) # not found
+        {
+            printf "ItemIosFileRes::loadPlurals: file is not found[%s]\n", $fileName;
+            last;
+        }
+        
+        my $resData = CommonUtils::getFileContent( $fileName );
+        
+        if ( length( $resData ) <= 0 ) # no data
+        {
+            last;
+        }
+        
+        my $handler = IosStringResourceSaxHandler->new;
+        
+        my $parser = XML::Parser::Expat->new;
+        
+        $handler->setRes( $self );
+        $handler->setHandlers( $parser );
+        
+        $parser->parsestring( $resData );
+        
+        $out = 1;
+    }}
+    
+    return $out;
+}
+
+#
 # Saves to file
 #
 # @param fileName - filename to write to
@@ -272,6 +323,142 @@ sub save
         {
             last;
         }
+        
+        $out = 1;
+    }}
+    
+    if ( defined( $file ) )
+    {
+        close( $file );
+    }
+    
+    return $out;
+}
+
+#
+# Saves plural items to file
+#
+# @param fileName - filename to write to
+#
+# @return !=0, if succeeded
+#
+sub savePlural
+{
+    my ( $self, $fileName ) = @_;
+    
+    my $out = 0;
+    
+    my $file;
+    
+    {{
+        if ( $fileName eq "" ) # no filename
+        {
+            printf "ItemIosFileRes::savePlural: no filename specified\n";
+            last;
+        }
+        
+        if ( !open( $file, ">:raw:encoding(UTF-8)", $fileName ) ) # failed
+        {
+            printf "ItemIosFileRes::savePlural: open failed[%s]: %s\n", $fileName, $!;
+            last;
+        }
+        
+        my $writer = XML::Writer->new( 
+            OUTPUT => $file,
+            ENCODING => "utf-8",
+            CHECK_PRINT => 1,
+            );
+        
+        my $indent = "\t";
+        my $newline = "\n";
+        
+        $writer->xmlDecl( "UTF-8");
+        $writer->doctype( "plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd" );
+        $writer->startTag( "plist", version => "1.0" );
+        $writer->characters( $newline );
+        $writer->startTag( "dict" );
+        #$writer->characters( $newline );
+        
+        for my $curItem ( @{ $self->{itemsExt} } )
+        {
+            if ( $curItem->isa( "ItemTextRes" ) ) # text resource
+            {
+                if ( $curItem->isPlural() ) # plural text
+                {
+                    $writer->characters( $newline.$indent );
+                    $writer->startTag( "key" );
+                    $writer->characters( $curItem->getId() );
+                    $writer->endTag( "key" );
+                    $writer->characters( $newline.$indent );
+                    $writer->startTag( "dict" );
+                    
+                    $writer->characters( $newline.$indent.$indent );
+                    $writer->startTag( "key" );
+                    $writer->characters( "NSStringLocalizedFormatKey" );
+                    $writer->endTag( "key" );
+                    $writer->characters( $newline.$indent.$indent );
+                    $writer->startTag( "string" );
+                    $writer->characters( "%#@".$curItem->{iosvar}."@" );
+                    $writer->endTag( "string" );
+                    
+                    $writer->characters( $newline.$indent.$indent );
+                    $writer->startTag( "key" );
+                    $writer->characters( $curItem->{iosvar} );
+                    $writer->endTag( "key" );
+                    
+                    $writer->characters( $newline.$indent.$indent );
+                    $writer->startTag( "dict" );
+                    
+                    $writer->characters( $newline.$indent.$indent.$indent );
+                    $writer->startTag( "key" );
+                    $writer->characters( "NSStringFormatSpecTypeKey" );
+                    $writer->endTag( "key" );
+                    $writer->characters( $newline.$indent.$indent.$indent );
+                    $writer->startTag( "string" );
+                    $writer->characters( "NSStringPluralRuleType" );
+                    $writer->endTag( "string" );
+                    
+                    $writer->characters( $newline.$indent.$indent.$indent );
+                    $writer->startTag( "key" );
+                    $writer->characters( "NSStringFormatValueTypeKey" );
+                    $writer->endTag( "key" );
+                    $writer->characters( $newline.$indent.$indent.$indent );
+                    $writer->startTag( "string" );
+                    $writer->characters( $curItem->{iosvarspec} );
+                    $writer->endTag( "string" );
+                    
+                    for my $curVariant ( @$ItemTextRes::VARIANTS ) 
+                    {
+                        my $text = $curItem->getVariant( $curVariant );
+                        
+                        if ( defined( $text ) )
+                        {
+                            $writer->characters( $newline.$indent.$indent.$indent );
+                            $writer->startTag( "key" );
+                            $writer->characters( $curVariant );
+                            $writer->endTag( "key" );
+                            $writer->characters( $newline.$indent.$indent.$indent );
+                            $writer->startTag( "string" );
+                            $writer->characters( $text->getData() );
+                            $writer->endTag( "string" );
+                        }
+                    }
+                    
+                    $writer->characters( $newline.$indent.$indent );
+                    $writer->endTag( "dict" );
+                    
+                    $writer->characters( $newline.$indent );
+                    $writer->endTag( "dict" );
+                    
+                }
+            }
+        }
+        
+        $writer->characters( $newline );
+        $writer->endTag( "dict" );
+        $writer->characters( $newline );
+        $writer->endTag( "plist" );
+        $writer->end();
         
         $out = 1;
     }}
