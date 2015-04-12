@@ -1924,13 +1924,13 @@ $fatpacked{"ItemIosFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
   
               #printf "ItemIosFileRes::load: s[%s]\n", $s;
               
-              if ( $s =~ /^\s*"([a-zA-Z_\.-]+)"\s*=\s*"(.+)"\s*;\s*\n?$/ ) # ID
+              if ( $s =~ /^\s*"([a-zA-Z0-9_\.-]+)"\s*=\s*"(.+)"\s*;\s*\n?$/ ) # ID
               {
                   my $id = $1;
                   my $val = $2;
   
-                  $val =~ s/\\"/"/g;
-                  $val =~ s/\\\\/\\/g;
+                  #$val =~ s/\\"/"/g;
+                  #$val =~ s/\\\\/\\/g;
                   
                   #printf "ItemIosFileRes::load: id[%s] v[%s]\n", $id, $val;
                   
@@ -2112,8 +2112,8 @@ $fatpacked{"ItemIosFileRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
                       my $id = $curItem->getId();
                       my $text = $curItem->getText()->getData();
                       
-                      $text =~ s/\\/\\\\/g;
-                      $text =~ s/"/\\"/g;
+                      #$text =~ s/\\/\\\\/g;
+                      #$text =~ s/"/\\"/g;
                       
                       $ok = printf $file "\"%s\" = \"%s\";".$newline, $id, $text;
                       
@@ -3046,7 +3046,7 @@ $fatpacked{"ItemProjectRes.pm"} = '#line '.(1+__LINE__).' "'.__FILE__."\"\n".<<'
                       
                       my $newItem = $news->getItemById( $id, $plural );
                       
-                      $toAdd = defined( $newItem ) ? $newItem : $oldItem;
+                      $toAdd = defined( $newItem ) ? $self->_mergeItem( $curItem, $newItem ) : $oldItem;
                       
                       if ( !defined( $toAdd ) ) # still no translation 
                       {

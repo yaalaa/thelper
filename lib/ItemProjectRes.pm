@@ -501,7 +501,7 @@ sub mergeTranslation
                     
                     my $newItem = $news->getItemById( $id, $plural );
                     
-                    $toAdd = defined( $newItem ) ? $newItem : $oldItem;
+                    $toAdd = defined( $newItem ) ? $self->_mergeItem( $curItem, $newItem ) : $oldItem;
                     
                     if ( !defined( $toAdd ) ) # still no translation 
                     {
